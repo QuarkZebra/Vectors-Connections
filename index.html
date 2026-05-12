@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Management Connections</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        p.subtitle {
+            margin-top: 0;
+            color: #555;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        
+        #level-indicator {
+            font-weight: bold;
+            color: #0077a3;
+            margin-bottom: 20px;
+        }
+
+        #game-board {
+            width: 100%;
+            max-width: 700px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        #solved-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            width: 100%;
+        }
+
+        .card {
+            background-color: #efefe6;
+            border: none;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+            word-wrap: break-word;
+        }
+
+        .card.selected {
+            background-color: #5a594e;
+            color: white;
+        }
+
+        .solved-row {
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 60px;
+        }
+
+        .solved-theme {
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            letter-spacing: 0.5px;
+        }
+
+        .solved-words {
+            font-size: 0.95rem;
+        }
+
+        .color-0 { background-color: #f9df6d; } /* Yellow */
+        .color-1 { background-color: #a0c35a; } /* Green */
+        .color-2 { background-color: #b0c4ef; } /* Blue */
+        .color-3 { background-color: #ba81c5; } /* Purple */
+
+        #controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button.action-btn {
+            padding: 12px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 30px;
+            border: 1px solid #000;
+            background-color: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: none; /* Hidden by default, toggled by JS */
+        }
+
+        button.action-btn.active {
+            display: inline-block;
+        }
+
+        button.action-btn:hover:not(:disabled) {
+            background-color: #f0f0f0;
+        }
+
+        button.action-btn:disabled {
+            border-color: #ccc;
+            color: #ccc;
+            cursor: not-allowed;
+            background-color: white;
+        }
+
+        button#submit {
+            background-color: #000;
+            color: white;
+        }
+
+        button#submit:disabled {
+            background-color: #ccc;
+            color: white;
+            border-color: #ccc;
+        }
+        
+        button.primary-action {
+            background-color: #e8f4f8;
+            border-color: #0077a3;
+            color: #0077a3;
+        }
+
+        button.primary-action:hover:not(:disabled) {
+            background-color: #d0ebf4;
+        }
+
+        #mistakes {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        #circles {
+            display: flex;
+            gap: 5px;
+        }
+
+        .circle {
+            display: inline-block; /* This was the missing magic! */
+            width: 15px;
+            height: 15px;
+            background-color: #5a594e;
+            border-radius: 50%;
+            transition: opacity 0.3s;
+        }
+
+        .circle.lost {
+            opacity: 0.2;
+        }
+
+        #message {
+            height: 24px;
+            font-weight: bold;
+            background-color: #000;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(4px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+            40%, 60% { transform: translate3d(6px, 0, 0); }
+        }
+
+        @media (max-width: 600px) {
+            #grid { grid-template-columns: repeat(2, 1fr); }
+            .card { min-height: 60px; font-size: 0.85rem; padding: 5px; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Data Management Connections</h1>
+    <p class="subtitle">Probability & Counting</p>
+    <div id="level-indicator">Game 1 of 5</div>
+
+    <div id="message"></div>
+
+    <div id="mistakes">
+        Mistakes remaining: 
+        <div id="circles">
+            <span class="circle"></span>
+            <span class="circle"></span>
+            <span class="circle"></span>
+            <span class="circle"></span>
+        </div>
+    </div>
+
+    <div id="game-board">
+        <div id="solved-area"></div>
+        <div id="grid"></div>
+    </div>
+
+    <div id="controls">
+        <button class="action-btn active" id="shuffle" onclick="shuffleGrid()">Shuffle</button>
+        <button class="action-btn active" id="deselect" onclick="deselectAll()">Deselect All</button>
+        <button class="action-btn active" id="submit" onclick="submitGuess()" disabled>Submit</button>
+        
+        <button class="action-btn primary-action" id="try-again" onclick="retryGame()">Try Again</button>
+        <button class="action-btn primary-action" id="next-game" onclick="startNextGame()">Next Game</button>
+    </div>
+
+    <script>
+        const allGames = [
+            // Game 1: Easy/Vocab
+            [
+                { theme: 'SUITS IN A DECK', words: ['Clubs', 'Diamonds', 'Hearts', 'Spades'] },
+                { theme: 'COMMON RANDOMIZERS', words: ['Coin', 'Die', 'Marble', 'Spinner'] },
+                { theme: 'BASIC TERMS', words: ['Experiment', 'Trial', 'Outcome', 'Event'] },
+                { theme: 'DATA TYPES', words: ['Nominal', 'Ordinal', 'Discrete', 'Continuous'] }
+            ],
+            // Game 2: Math & Notation
+            [
+                { theme: 'PERMUTATIONS', words: ['Order matters', 'nPr', 'n! / (n-r)!', 'Line-ups'] },
+                { theme: 'COMBINATIONS', words: ['Order does not matter', 'nCr', 'n! / ((n-r)!r!)', 'Committees'] },
+                { theme: 'FACTORIALS', words: ['n!', 'n(n-1)(n-2)...1', 'Arranging n items', '0! = 1'] },
+                { theme: 'ODDS IN FAVOR', words: ['a : b', 'P(Success) : P(Failure)', 'Favorable : Unfavorable', 'Implied Probability'] }
+            ],
+            // Game 3: Probability Rules
+            [
+                { theme: 'MUTUALLY EXCLUSIVE', words: ['Disjoint', 'P(A and B) = 0', 'Cannot happen together', 'No Overlap'] },
+                { theme: 'INDEPENDENT', words: ['With Replacement', 'P(A and B) = P(A)×P(B)', 'Does not affect the next', 'Coin Flips'] },
+                { theme: 'CONDITIONAL', words: ['Given that', 'Reduced sample space', 'P(A|B)', 'P(A and B) / P(B)'] },
+                { theme: 'THE COMPLEMENT', words: ['1 - P(A)', 'Not A', "A'", 'The "At Least One" Trick'] }
+            ],
+            // Game 4: Situations (Counting)
+            [
+                { theme: 'PERMUTATION W/ REPLACEMENT', words: ['4-digit PIN code', 'Multiple choice test', 'Rolling a die 3 times', 'License plate letters'] },
+                { theme: 'PERMUTATION W/O REPLACEMENT', words: ['President, VP, Treasurer', '1st, 2nd, 3rd place', 'Seating people in a row', 'Words without repeating letters'] },
+                { theme: 'COMBINATION', words: ['Dealing a 5-card poker hand', 'Choosing a 4-person committee', 'Lotto 6/49 numbers', 'Selecting 3 pizza toppings'] },
+                { theme: 'IDENTICAL ITEMS', words: ['MISSISSIPPI arrangements', 'n! / (a!b!c!)', 'Arranging identical flags', 'Paths on a grid'] }
+            ],
+            // Game 5: Situations (Probability & Sets)
+            [
+                { theme: 'ADDITIVE PRINCIPLE (OR)', words: ['Choosing a Jack or a King', 'Rule of Sum', 'Adding disjoint events', 'Rolling a sum of 7 or 11'] },
+                { theme: 'MULTIPLICATIVE PRINCIPLE (AND)', words: ['Rule of Product', 'Tree diagram branches', 'm × n ways', 'Flipping heads and rolling a 6'] },
+                { theme: 'DEPENDENT EVENTS', words: ['Without replacement', 'P(A) × P(B|A)', 'Drawing 2 cards from a deck', 'Choosing people from a class'] },
+                { theme: 'VENN DIAGRAM TERMS', words: ['Intersection', 'Union', 'Subset', 'Universal Set'] }
+            ]
+        ];
+
+        let currentGameIndex = 0;
+        let activeCategories = [];
+        let words = [];
+        let selectedWords = [];
+        let solvedCategories = [];
+        let mistakes = 4;
+        let isGameOver = false;
+
+        function loadGame(index) {
+            document.getElementById('level-indicator').textContent = `Game ${index + 1} of 5`;
+            
+            selectedWords = [];
+            solvedCategories = [];
+            mistakes = 4;
+            isGameOver = false;
+            
+            document.getElementById('solved-area').innerHTML = '';
+            updateMistakesUI();
+            toggleControls('playing');
+
+            // Deep copy the current game's categories so we can modify colors
+            activeCategories = JSON.parse(JSON.stringify(allGames[index]));
+            
+            // Assign colors and IDs randomly to the 4 categories
+            shuffleArray(activeCategories);
+            activeCategories.forEach((cat, i) => {
+                cat.colorClass = `color-${i}`;
+                cat.id = i;
+            });
+
+            words = activeCategories.flatMap(cat => cat.words);
+            shuffleArray(words);
+            renderGrid();
+        }
+
+        function retryGame() {
+            // Restart the exact same level
+            loadGame(currentGameIndex);
+        }
+
+        function startNextGame() {
+            currentGameIndex++;
+            if (currentGameIndex >= allGames.length) {
+                showMessage("You've completed all games!");
+                document.getElementById('level-indicator').textContent = "All Games Complete!";
+                document.getElementById('grid').innerHTML = '';
+                toggleControls('finished');
+                return;
+            }
+            loadGame(currentGameIndex);
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            
+            words.forEach(word => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                if (selectedWords.includes(word)) card.classList.add('selected');
+                card.textContent = word;
+                card.onclick = () => toggleSelect(word);
+                grid.appendChild(card);
+            });
+
+            updateSubmitButton();
+        }
+
+        function toggleSelect(word) {
+            if (isGameOver) return;
+
+            if (selectedWords.includes(word)) {
+                selectedWords = selectedWords.filter(w => w !== word);
+            } else {
+                if (selectedWords.length < 4) {
+                    selectedWords.push(word);
+                }
+            }
+            renderGrid();
+        }
+
+        function deselectAll() {
+            if (isGameOver) return;
+            selectedWords = [];
+            renderGrid();
+        }
+
+        function shuffleGrid() {
+            if (isGameOver) return;
+            shuffleArray(words);
+            renderGrid();
+        }
+
+        function updateSubmitButton() {
+            const submitBtn = document.getElementById('submit');
+            submitBtn.disabled = selectedWords.length !== 4;
+        }
+
+        function showMessage(text) {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.style.opacity = 1;
+            setTimeout(() => {
+                msgEl.style.opacity = 0;
+            }, 2000);
+        }
+
+        function toggleControls(state) {
+            const btnShuffle = document.getElementById('shuffle');
+            const btnDeselect = document.getElementById('deselect');
+            const btnSubmit = document.getElementById('submit');
+            const btnTryAgain = document.getElementById('try-again');
+            const btnNext = document.getElementById('next-game');
+
+            // Reset all to hidden
+            [btnShuffle, btnDeselect, btnSubmit, btnTryAgain, btnNext].forEach(btn => btn.classList.remove('active'));
+
+            if (state === 'playing') {
+                btnShuffle.classList.add('active');
+                btnDeselect.classList.add('active');
+                btnSubmit.classList.add('active');
+            } else if (state === 'lost') {
+                btnTryAgain.classList.add('active');
+                // Only show Next Game if it's not the last game
+                if (currentGameIndex < allGames.length - 1) {
+                    btnNext.classList.add('active');
+                }
+            } else if (state === 'won') {
+                if (currentGameIndex < allGames.length - 1) {
+                    btnNext.classList.add('active');
+                }
+            } else if (state === 'finished') {
+                // Keep all hidden
+            }
+        }
+
+        function submitGuess() {
+            if (selectedWords.length !== 4 || isGameOver) return;
+
+            let matchedCategory = null;
+            let isOneAway = false;
+
+            for (const cat of activeCategories) {
+                if (solvedCategories.includes(cat.id)) continue;
+                
+                let matchCount = 0;
+                for (const word of selectedWords) {
+                    if (cat.words.includes(word)) matchCount++;
+                }
+
+                if (matchCount === 4) {
+                    matchedCategory = cat;
+                    break;
+                } else if (matchCount === 3) {
+                    isOneAway = true;
+                }
+            }
+
+            if (matchedCategory) {
+                // Correct guess
+                solvedCategories.push(matchedCategory.id);
+                words = words.filter(w => !matchedCategory.words.includes(w));
+                selectedWords = [];
+                
+                renderSolved(matchedCategory);
+                renderGrid();
+
+                if (solvedCategories.length === 4) {
+                    showMessage("Perfect!");
+                    isGameOver = true;
+                    toggleControls('won');
+                }
+            } else {
+                // Incorrect guess
+                mistakes--;
+                updateMistakesUI();
+                
+                const grid = document.getElementById('grid');
+                grid.classList.add('shake');
+                setTimeout(() => grid.classList.remove('shake'), 400);
+
+                if (mistakes === 0) {
+                    showMessage("Out of mistakes!");
+                    isGameOver = true;
+                    toggleControls('lost');
+                } else if (isOneAway) {
+                    showMessage("One away!");
+                } else {
+                    showMessage("Not quite!");
+                }
+            }
+        }
+
+        function renderSolved(category) {
+            const solvedArea = document.getElementById('solved-area');
+            const row = document.createElement('div');
+            row.className = `solved-row ${category.colorClass}`;
+            row.innerHTML = `
+                <div class="solved-theme">${category.theme}</div>
+                <div class="solved-words">${category.words.join(', ')}</div>
+            `;
+            solvedArea.appendChild(row);
+        }
+
+        function updateMistakesUI() {
+            const circles = document.querySelectorAll('.circle');
+            circles.forEach((circle, index) => {
+                if (index < mistakes) {
+                    circle.classList.remove('lost');
+                } else {
+                    circle.classList.add('lost');
+                }
+            });
+        }
+
+        // Initialize Game 1 on load
+        loadGame(0);
+    </script>
+</body>
+</html>

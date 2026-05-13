@@ -90,6 +90,10 @@
             color: white;
         }
 
+        .card-inner {
+            width: 100%;
+            text-align: center;
+        }
         .solved-row {
             border-radius: 6px;
             padding: 15px;
@@ -520,7 +524,10 @@
                 const card = document.createElement('div');
                 card.className = 'card';
                 if (selectedWords.includes(word)) card.classList.add('selected');
-                card.textContent = word;
+                const inner = document.createElement('span');
+                inner.className = 'card-inner';
+                inner.textContent = word;
+                card.appendChild(inner);
                 card.onclick = () => toggleSelect(word);
                 grid.appendChild(card);
             });

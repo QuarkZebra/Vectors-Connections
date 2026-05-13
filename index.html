@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vectors Connections</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -27,7 +30,7 @@
             margin-bottom: 5px;
             text-align: center;
         }
-        
+
         #level-indicator {
             font-weight: bold;
             color: #0077a3;
@@ -61,8 +64,8 @@
             background-color: #efefe6;
             border: none;
             border-radius: 6px;
-            padding: 10px;
-            font-size: 0.95rem;
+            padding: 10px 8px;
+            font-size: 0.8rem;
             font-weight: bold;
             text-align: center;
             cursor: pointer;
@@ -71,12 +74,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 80px;
+            min-height: 90px;
             word-wrap: break-word;
+            overflow: hidden;
+            line-height: 1.4;
         }
 
         .card.selected {
             background-color: #5a594e;
+            color: white;
+        }
+
+        /* Make KaTeX text white when card is selected */
+        .card.selected .katex {
             color: white;
         }
 
@@ -98,7 +108,7 @@
         }
 
         .solved-words {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
 
         .color-0 { background-color: #f9df6d; } /* Yellow */
@@ -124,7 +134,7 @@
             background-color: white;
             cursor: pointer;
             transition: background-color 0.2s;
-            display: none; /* Hidden by default, toggled by JS */
+            display: none;
         }
 
         button.action-btn.active {
@@ -152,7 +162,7 @@
             color: white;
             border-color: #ccc;
         }
-        
+
         button.primary-action {
             background-color: #e8f4f8;
             border-color: #0077a3;
@@ -177,7 +187,7 @@
         }
 
         .circle {
-            display: inline-block; /* This was the missing magic! */
+            display: inline-block;
             width: 15px;
             height: 15px;
             background-color: #5a594e;
@@ -214,7 +224,7 @@
 
         @media (max-width: 600px) {
             #grid { grid-template-columns: repeat(2, 1fr); }
-            .card { min-height: 60px; font-size: 0.85rem; padding: 5px; }
+            .card { min-height: 70px; font-size: 0.72rem; padding: 6px 4px; }
         }
     </style>
 </head>
@@ -227,7 +237,7 @@
     <div id="message"></div>
 
     <div id="mistakes">
-        Mistakes remaining: 
+        Mistakes remaining:
         <div id="circles">
             <span class="circle"></span>
             <span class="circle"></span>
@@ -235,7 +245,7 @@
             <span class="circle"></span>
         </div>
     </div>
-      
+
     <div id="game-board">
         <div id="solved-area"></div>
         <div id="grid"></div>
@@ -245,47 +255,204 @@
         <button class="action-btn active" id="shuffle" onclick="shuffleGrid()">Shuffle</button>
         <button class="action-btn active" id="deselect" onclick="deselectAll()">Deselect All</button>
         <button class="action-btn active" id="submit" onclick="submitGuess()" disabled>Submit</button>
-        
+
         <button class="action-btn primary-action" id="try-again" onclick="retryGame()">Try Again</button>
         <button class="action-btn primary-action" id="next-game" onclick="startNextGame()">Next Game</button>
     </div>
 
     <script>
+        const katexOptions = {
+            delimiters: [
+                { left: '$$', right: '$$', display: true  },
+                { left: '$',  right: '$',  display: false }
+            ],
+            throwOnError: false
+        };
+
+        function typeset(element) {
+            renderMathInElement(element, katexOptions);
+        }
+
         const allGames = [
-            // Game 1: Easy/Vocab
+            // Game 1: Basics — Vectors, Scalars & Angles
             [
-                { theme: 'SUITS IN A DECK', words: ['Clubs', 'Diamonds', 'Hearts', 'Spades'] },
-                { theme: 'COMMON RANDOMIZERS', words: ['Coin', 'Die', 'Marble', 'Spinner'] },
-                { theme: 'BASIC TERMS', words: ['Experiment', 'Trial', 'Outcome', 'Event'] },
-                { theme: 'DATA TYPES', words: ['Nominal', 'Ordinal', 'Discrete', 'Continuous'] }
+                {
+                    theme: 'ALL MEAN 90°',
+                    words: ['Right Angle', 'Orthogonal', 'Perpendicular', '90°']
+                },
+                {
+                    theme: 'VECTORS',
+                    words: ['Displacement', 'Force', '20 m/s [N 20° E]', '[20, 150°]']
+                },
+                {
+                    theme: 'SCALARS',
+                    words: ['Distance', '3 × 5', '40 seconds', '3/7 correct']
+                },
+                {
+                    theme: 'ANGLES',
+                    words: [
+                        'Bearing 200°',
+                        '$\\arcsin\\!\\left(\\tfrac{1}{2}\\right)$',
+                        'Diving 20° below the horizontal',
+                        '$30^\\circ = \\dfrac{\\pi}{6}$'
+                    ]
+                }
             ],
-            // Game 2: Math & Notation
+            // Game 2: Dot & Cross Products
             [
-                { theme: 'PERMUTATIONS', words: ['Order matters', 'nPr', 'n! / (n-r)!', 'Line-ups'] },
-                { theme: 'COMBINATIONS', words: ['Order does not matter', 'nCr', 'n! / ((n-r)!r!)', 'Committees'] },
-                { theme: 'FACTORIALS', words: ['n!', 'n(n-1)(n-2)...1', 'Arranging n items', '0! = 1'] },
-                { theme: 'ODDS IN FAVOR', words: ['a : b', 'P(Success) : P(Failure)', 'Favorable : Unfavorable', 'Implied Probability'] }
+                {
+                    theme: 'DOT PRODUCT',
+                    words: [
+                        '$\\vec{a} \\cdot \\vec{b}$',
+                        '$|\\vec{a}||\\vec{b}|\\cos\\theta$',
+                        '$a_1b_1 + a_2b_2 + a_3b_3$',
+                        '$W = \\vec{F} \\cdot \\vec{d}$'
+                    ]
+                },
+                {
+                    theme: 'CROSS PRODUCT',
+                    words: [
+                        '$\\vec{a} \\times \\vec{b}$',
+                        '$|\\vec{a}||\\vec{b}|\\sin\\theta$',
+                        '$\\tau = \\vec{F} \\times \\vec{d}$',
+                        'Area of a parallelogram'
+                    ]
+                },
+                {
+                    theme: 'ORTHOGONALITY',
+                    words: [
+                        'Dot product $= 0$',
+                        '$\\theta = 90^\\circ$',
+                        '$\\operatorname{comp}_{\\vec{a}}\\vec{b} = 0$',
+                        '$\\beta = 90^\\circ$ and $\\gamma = 90^\\circ$'
+                    ]
+                },
+                {
+                    theme: 'UNIT VECTORS',
+                    words: [
+                        'The "hat" symbol: $\\hat{v}$',
+                        '$\\vec{u} = \\dfrac{1}{|\\vec{v}|}\\vec{v}$',
+                        '$\\hat{i},\\ \\hat{j},$ and $\\hat{k}$',
+                        'Fundamental, length-one vectors'
+                    ]
+                }
             ],
-            // Game 3: Probability Rules
+            // Game 3: Projections & Linear Combinations
             [
-                { theme: 'MUTUALLY EXCLUSIVE', words: ['Disjoint', 'P(A and B) = 0', 'Cannot happen together', 'No Overlap'] },
-                { theme: 'INDEPENDENT', words: ['With Replacement', 'P(A and B) = P(A)×P(B)', 'Does not affect the next', 'Coin Flips'] },
-                { theme: 'CONDITIONAL', words: ['Given that', 'Reduced sample space', 'P(A|B)', 'P(A and B) / P(B)'] },
-                { theme: 'THE COMPLEMENT', words: ['1 - P(A)', 'Not A', "A'", 'The "At Least One" Trick'] }
+                {
+                    theme: 'SCALAR PROJECTION',
+                    words: [
+                        '$\\operatorname{comp}_{\\vec{a}}\\vec{b}$',
+                        '$\\dfrac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}|}$',
+                        '$|\\vec{b}|\\cos\\theta$',
+                        'Component of $\\vec{b}$ along $\\vec{a}$'
+                    ]
+                },
+                {
+                    theme: 'VECTOR PROJECTION',
+                    words: [
+                        '$\\operatorname{proj}_{\\vec{a}}\\vec{b}$',
+                        '$\\!\\left(\\dfrac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}|^2}\\right)\\!\\vec{a}$',
+                        '$(\\operatorname{comp}_{\\vec{a}}\\vec{b})\\,\\hat{a}$',
+                        'Shadow of $\\vec{b}$ onto $\\vec{a}$'
+                    ]
+                },
+                {
+                    theme: 'LINEAR COMBINATIONS',
+                    words: [
+                        '$\\vec{v} = m\\vec{a} + n\\vec{b}$',
+                        'In terms of $\\hat{i},\\ \\hat{j},\\ \\hat{k}$',
+                        'Is $\\vec{c}$ coplanar with $\\vec{a}$ and $\\vec{b}$?',
+                        '$m(9,{-}3,{-}15)+n(2,8,{-}4)=({-}12,17,19)$'
+                    ]
+                },
+                {
+                    theme: 'SPANNING SETS',
+                    words: [
+                        'All linear combinations fill a space',
+                        'Any 2 non-collinear vectors in $\\mathbb{R}^2$',
+                        '$\\{\\hat{i},\\ \\hat{j},\\ \\hat{k}\\}$ in $\\mathbb{R}^3$',
+                        'Any 3 non-collinear vectors span $\\mathbb{R}^3$'
+                    ]
+                }
             ],
-            // Game 4: Situations (Counting)
+            // Game 4: Operations & Properties
             [
-                { theme: 'PERMUTATION W/ REPLACEMENT', words: ['4-digit PIN code', 'Multiple choice test', 'Rolling a die 3 times', 'License plate letters'] },
-                { theme: 'PERMUTATION W/O REPLACEMENT', words: ['President, VP, Treasurer', '1st, 2nd, 3rd place', 'Seating people in a row', 'Words without repeating letters'] },
-                { theme: 'COMBINATION', words: ['Dealing a 5-card poker hand', 'Choosing a 4-person committee', 'Lotto 6/49 numbers', 'Selecting 3 pizza toppings'] },
-                { theme: 'IDENTICAL ITEMS', words: ['MISSISSIPPI arrangements', 'n! / (a!b!c!)', 'Arranging identical flags', 'Paths on a grid'] }
+                {
+                    theme: 'VECTOR SUBTRACTION',
+                    words: [
+                        '$\\vec{a} - \\vec{b}$',
+                        '$\\vec{a} + (-\\vec{b})$',
+                        'Finding $\\vec{QP}$ from points $P$ and $Q$',
+                        'Reverse $\\vec{b}$, then add tip-to-tail'
+                    ]
+                },
+                {
+                    theme: 'DISTRIBUTIVE PROPERTY',
+                    words: [
+                        '$k(\\vec{a}+\\vec{b})=k\\vec{a}+k\\vec{b}$',
+                        '$\\vec{a}\\cdot(\\vec{b}+\\vec{c})=\\vec{a}\\cdot\\vec{b}+\\vec{a}\\cdot\\vec{c}$',
+                        '$\\vec{a}\\times(\\vec{b}+\\vec{c})=\\vec{a}\\times\\vec{b}+\\vec{a}\\times\\vec{c}$',
+                        'Scalar $k$ distributes over a bracket'
+                    ]
+                },
+                {
+                    theme: 'PERPENDICULARITY',
+                    words: [
+                        '$\\vec{a} \\cdot \\vec{b} = 0$',
+                        '$\\vec{a} \\times \\vec{b}$ is $\\perp$ to both $\\vec{a}$ and $\\vec{b}$',
+                        '$\\theta = 90^\\circ$',
+                        '$\\operatorname{comp}_{\\vec{a}}\\vec{b} = 0$'
+                    ]
+                },
+                {
+                    theme: 'EQUILIBRIUM',
+                    words: [
+                        '$\\displaystyle\\sum\\vec{F} = \\vec{0}$',
+                        'A boat going nowhere in a river',
+                        'A closed loop of displacement vectors',
+                        '$\\vec{GP}+\\vec{GQ}+\\vec{GR}=\\vec{0}$'
+                    ]
+                }
             ],
-            // Game 5: Situations (Probability & Sets)
+            // Game 5: Advanced Concepts
             [
-                { theme: 'ADDITIVE PRINCIPLE (OR)', words: ['Choosing a Jack or a King', 'Rule of Sum', 'Adding disjoint events', 'Rolling a sum of 7 or 11'] },
-                { theme: 'MULTIPLICATIVE PRINCIPLE (AND)', words: ['Rule of Product', 'Tree diagram branches', 'm × n ways', 'Flipping heads and rolling a 6'] },
-                { theme: 'DEPENDENT EVENTS', words: ['Without replacement', 'P(A) × P(B|A)', 'Drawing 2 cards from a deck', 'Choosing people from a class'] },
-                { theme: 'VENN DIAGRAM TERMS', words: ['Intersection', 'Union', 'Subset', 'Universal Set'] }
+                {
+                    theme: 'n-DIMENSIONS',
+                    words: [
+                        '$\\vec{x} = (x_1, x_2, \\ldots, x_n)$',
+                        '$|\\vec{x}| = \\sqrt{x_1^2 + x_2^2 + \\cdots + x_n^2}$',
+                        'Analyze each dimension individually',
+                        'A spanning set in any dimension'
+                    ]
+                },
+                {
+                    theme: 'ABSTRACT DOT PRODUCT',
+                    words: [
+                        '$(\\vec{a}+5\\vec{b})\\cdot(2\\vec{a}-3\\vec{b})=0$',
+                        '$2|\\vec{a}|^2+7\\,\\vec{a}\\cdot\\vec{b}-15|\\vec{b}|^2$',
+                        '$\\vec{a}\\cdot(\\vec{b}\\cdot\\vec{c})$ is undefined',
+                        '$\\vec{a}\\cdot\\vec{a}=|\\vec{a}|^2$'
+                    ]
+                },
+                {
+                    theme: 'COPLANARITY & SPANNING',
+                    words: [
+                        '$m\\vec{a}+n\\vec{b}=\\vec{c}$',
+                        '3 equations, 2 unknowns ($m$ and $n$)',
+                        '$z = \\dfrac{-27}{13}x - \\dfrac{1}{13}y$',
+                        'Any 3 non-collinear vectors in $\\mathbb{R}^3$'
+                    ]
+                },
+                {
+                    theme: 'INVARIANT PROOFS',
+                    words: [
+                        '$\\cos^2\\!\\alpha+\\cos^2\\!\\beta+\\cos^2\\!\\gamma=1$',
+                        '$\\vec{GP}+\\vec{GQ}+\\vec{GR}=\\vec{0}$',
+                        'Centroid divides median in ratio $2:1$',
+                        '$|\\vec{a}\\times\\vec{b}|=|\\vec{a}||\\vec{b}|\\sin\\theta$'
+                    ]
+                }
             ]
         ];
 
@@ -299,20 +466,18 @@
 
         function loadGame(index) {
             document.getElementById('level-indicator').textContent = `Game ${index + 1} of 5`;
-            
+
             selectedWords = [];
             solvedCategories = [];
             mistakes = 4;
             isGameOver = false;
-            
+
             document.getElementById('solved-area').innerHTML = '';
             updateMistakesUI();
             toggleControls('playing');
 
-            // Deep copy the current game's categories so we can modify colors
             activeCategories = JSON.parse(JSON.stringify(allGames[index]));
-            
-            // Assign colors and IDs randomly to the 4 categories
+
             shuffleArray(activeCategories);
             activeCategories.forEach((cat, i) => {
                 cat.colorClass = `color-${i}`;
@@ -325,7 +490,6 @@
         }
 
         function retryGame() {
-            // Restart the exact same level
             loadGame(currentGameIndex);
         }
 
@@ -351,7 +515,7 @@
         function renderGrid() {
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
-            
+
             words.forEach(word => {
                 const card = document.createElement('div');
                 card.className = 'card';
@@ -362,6 +526,7 @@
             });
 
             updateSubmitButton();
+            typeset(grid);
         }
 
         function toggleSelect(word) {
@@ -404,13 +569,12 @@
         }
 
         function toggleControls(state) {
-            const btnShuffle = document.getElementById('shuffle');
+            const btnShuffle  = document.getElementById('shuffle');
             const btnDeselect = document.getElementById('deselect');
-            const btnSubmit = document.getElementById('submit');
+            const btnSubmit   = document.getElementById('submit');
             const btnTryAgain = document.getElementById('try-again');
-            const btnNext = document.getElementById('next-game');
+            const btnNext     = document.getElementById('next-game');
 
-            // Reset all to hidden
             [btnShuffle, btnDeselect, btnSubmit, btnTryAgain, btnNext].forEach(btn => btn.classList.remove('active'));
 
             if (state === 'playing') {
@@ -419,16 +583,9 @@
                 btnSubmit.classList.add('active');
             } else if (state === 'lost') {
                 btnTryAgain.classList.add('active');
-                // Only show Next Game if it's not the last game
-                if (currentGameIndex < allGames.length - 1) {
-                    btnNext.classList.add('active');
-                }
+                if (currentGameIndex < allGames.length - 1) btnNext.classList.add('active');
             } else if (state === 'won') {
-                if (currentGameIndex < allGames.length - 1) {
-                    btnNext.classList.add('active');
-                }
-            } else if (state === 'finished') {
-                // Keep all hidden
+                if (currentGameIndex < allGames.length - 1) btnNext.classList.add('active');
             }
         }
 
@@ -440,7 +597,7 @@
 
             for (const cat of activeCategories) {
                 if (solvedCategories.includes(cat.id)) continue;
-                
+
                 let matchCount = 0;
                 for (const word of selectedWords) {
                     if (cat.words.includes(word)) matchCount++;
@@ -455,11 +612,10 @@
             }
 
             if (matchedCategory) {
-                // Correct guess
                 solvedCategories.push(matchedCategory.id);
                 words = words.filter(w => !matchedCategory.words.includes(w));
                 selectedWords = [];
-                
+
                 renderSolved(matchedCategory);
                 renderGrid();
 
@@ -469,10 +625,9 @@
                     toggleControls('won');
                 }
             } else {
-                // Incorrect guess
                 mistakes--;
                 updateMistakesUI();
-                
+
                 const grid = document.getElementById('grid');
                 grid.classList.add('shake');
                 setTimeout(() => grid.classList.remove('shake'), 400);
@@ -493,11 +648,19 @@
             const solvedArea = document.getElementById('solved-area');
             const row = document.createElement('div');
             row.className = `solved-row ${category.colorClass}`;
-            row.innerHTML = `
-                <div class="solved-theme">${category.theme}</div>
-                <div class="solved-words">${category.words.join(', ')}</div>
-            `;
+
+            const themeDiv = document.createElement('div');
+            themeDiv.className = 'solved-theme';
+            themeDiv.textContent = category.theme;
+
+            const wordsDiv = document.createElement('div');
+            wordsDiv.className = 'solved-words';
+            wordsDiv.textContent = category.words.join(', ');
+
+            row.appendChild(themeDiv);
+            row.appendChild(wordsDiv);
             solvedArea.appendChild(row);
+            typeset(wordsDiv);
         }
 
         function updateMistakesUI() {
@@ -511,7 +674,6 @@
             });
         }
 
-        // Initialize Game 1 on load
         loadGame(0);
     </script>
 </body>
